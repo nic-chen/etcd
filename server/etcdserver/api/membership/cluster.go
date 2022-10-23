@@ -83,14 +83,16 @@ const (
 func NewClusterFromURLsMap(lg *zap.Logger, token string, urlsmap types.URLsMap, opts ...ClusterOption) (*RaftCluster, error) {
 	c := NewCluster(lg, opts...)
 	for name, urls := range urlsmap {
-		m := NewMember(name, urls, token, nil)
-		if _, ok := c.members[m.ID]; ok {
-			return nil, fmt.Errorf("member exists with identical ID %v", m)
+		for idx, _ := range urls {
+			m := NewMember(name, urls[idx:idx+1], token, nil)
+			if _, ok := c.members[m.ID]; ok {
+				return nil, fmt.Errorf("member exists with identical ID %v", m)
+			}
+			if uint64(m.ID) == raft.None {
+				return nil, fmt.Errorf("cannot use %x as member id", raft.None)
+			}
+			c.members[m.ID] = m
 		}
-		if uint64(m.ID) == raft.None {
-			return nil, fmt.Errorf("cannot use %x as member id", raft.None)
-		}
-		c.members[m.ID] = m
 	}
 	c.genID()
 	return c, nil
